@@ -52,10 +52,10 @@ FROM Telco_Customer_Churn;
 -- This query groups customers into clear lifecycle
 -- stages based on length of service:
 --
--- 0–5 months   → New customers
--- 6–12 months  → Early-tenure customers
--- 13–24 months → Mid-tenure customers
--- 25+ months   → Long-term customers
+-- 0–12 months   → New customers
+-- 13–24 months  → Early-tenure customers
+-- 25–48 months → Mid-tenure customers
+-- 49+ months   → Long-term customers
 --
 -- The tenure_group field is used to:
 -- - Analyse churn by customer lifecycle stage
@@ -71,6 +71,53 @@ SELECT
         ELSE '49+ months'
     END AS tenure_group
 FROM Telco_Customer_Churn`;
+
+-- ============================================
+-- ANALYTICS VIEW: churn_view
+-- ============================================
+-- This view represents the final, analysis-ready
+-- dataset used for churn reporting and dashboarding.
+--
+-- Purpose:
+-- - Provide a single source of truth for churn analysis
+-- - Abstract raw tables away from BI tools
+-- - Standardise business logic across reports
+--
+-- Key transformations applied:
+-- 1. Tenure is bucketed into lifecycle stages (tenure_group)
+-- 2. Churn status is converted into a numeric flag (churn_flag)
+--
+-- This design enables:
+-- - Consistent churn rate calculations
+-- - Clear lifecycle-based analysis
+-- - Reliable consumption by Power BI dashboards
+
+CREATE OR REPLACE VIEW churn_view AS
+SELECT
+    customerID,
+    gender,
+    SeniorCitizen,
+    Partner,
+    Dependents,
+    tenure,
+    CASE 
+        WHEN tenure < 6 THEN '0–5 months'
+        WHEN tenure BETWEEN 6 AND 12 THEN '6–12 months'
+        WHEN tenure BETWEEN 13 AND 24 THEN '13–24 months'
+        ELSE '25+ months'
+    END AS tenure_group,
+
+    Contract,
+    InternetService,
+    PaymentMethod,
+    MonthlyCharges,
+    TotalCharges,
+    CASE 
+        WHEN Churn = 'Yes' THEN 1 
+        ELSE 0 
+    END AS churn_flag
+
+FROM Telco_Customer_Churn;
 
 
     -- ============================================
@@ -88,57 +135,7 @@ SELECT
 FROM Telco_Customer_Churn;
 
 -- ============================================
--- ANALYTICS VIEW: churn_view
--- ============================================
--- This view represents the final, analysis-ready
--- dataset used for churn reporting and dashboarding.
---
--- Purpose:
--- - Provide a single source of truth for churn analysis
--- - Abstract raw tables away from BI tools
--- - Standardise business logic across reports
---
--- Key transformations applied:
--- 1. Tenure is bucketed into lifecycle stages (tenure_group)
--- 2. Churn status is converted into a numeric flag (churn_flag)
---
--- This design enables:
--- - Consistent churn rate calculations
--- - Clear lifecycle-based analysis
--- - Reliable consumption by Power BI dashboards
-
-CREATE OR REPLACE VIEW churn_view AS
-SELECT
-    customerID,
-    gender,
-    SeniorCitizen,
-    Partner,
-    Dependents,
-    tenure,
-    CASE 
-        WHEN tenure < 6 THEN '0–5 months'
-        WHEN tenure BETWEEN 6 AND 12 THEN '6–12 months'
-        WHEN tenure BETWEEN 13 AND 24 THEN '13–24 months'
-        ELSE '25+ months'
-    END AS tenure_group,
-
-    Contract,
-    InternetService,
-    PaymentMethod,
-    MonthlyCharges,
-    TotalCharges,
-    CASE 
-        WHEN Churn = 'Yes' THEN 1 
-        ELSE 0 
-    END AS churn_flag
-
-FROM Telco_Customer_Churn;
-
-
-
-
--- ============================================
--- CHURN BY CONTRACT TYPE
+-- CHURN BY CONTRACT TYPE - USING THE VIEW TABLE
 -- ============================================
 -- Highlights how churn varies across contract models
 -- (e.g. Month-to-month vs long-term contracts),
@@ -154,7 +151,7 @@ GROUP BY Contract
 ORDER BY churn_rate DESC;
 
 -- ============================================
--- CHURN BY TENURE GROUP
+-- CHURN BY TENURE GROUP - USING THE VIEW TABLE
 -- ============================================
 -- Reveals churn concentration by customer lifecycle stage,
 -- enabling targeted onboarding and early-retention initiatives.
@@ -170,7 +167,7 @@ ORDER BY churn_rate DESC;
 
 
 -- ============================================
--- HIGH-RISK CUSTOMER SEGMENT
+-- HIGH-RISK CUSTOMER SEGMENT - USING THE VIEW TABLE
 -- ============================================
 -- Defines high-risk churn customers as:
 -- - Month-to-month contracts
@@ -188,51 +185,3 @@ WHERE
     AND MonthlyCharges > 70
     AND tenure < 12
     AND churn_flag = 1;
-
-
--- ============================================
--- ANALYTICS VIEW: churn_view
--- ============================================
--- This view represents the final, analysis-ready
--- dataset used for churn reporting and dashboarding.
---
--- Purpose:
--- - Provide a single source of truth for churn analysis
--- - Abstract raw tables away from BI tools
--- - Standardise business logic across reports
---
--- Key transformations applied:
--- 1. Tenure is bucketed into lifecycle stages (tenure_group)
--- 2. Churn status is converted into a numeric flag (churn_flag)
---
--- This design enables:
--- - Consistent churn rate calculations
--- - Clear lifecycle-based analysis
--- - Reliable consumption by Power BI dashboards
-
-CREATE OR REPLACE VIEW churn_view AS
-SELECT
-    customerID,
-    gender,
-    SeniorCitizen,
-    Partner,
-    Dependents,
-    tenure,
-    CASE 
-        WHEN tenure < 6 THEN '0–5 months'
-        WHEN tenure BETWEEN 6 AND 12 THEN '6–12 months'
-        WHEN tenure BETWEEN 13 AND 24 THEN '13–24 months'
-        ELSE '25+ months'
-    END AS tenure_group,
-
-    Contract,
-    InternetService,
-    PaymentMethod,
-    MonthlyCharges,
-    TotalCharges,
-    CASE 
-        WHEN Churn = 'Yes' THEN 1 
-        ELSE 0 
-    END AS churn_flag
-
-FROM Telco_Customer_Churn;
